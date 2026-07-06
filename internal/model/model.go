@@ -5,7 +5,9 @@ import (
 	"os"
 
 	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lewispricey/mded/internal/keybinds"
 )
@@ -28,6 +30,11 @@ type saveMsg struct {
 	err error
 }
 
+type renderMsg struct {
+	content string
+	err     error
+}
+
 type Model struct {
 	mode         Mode
 	filePath     string
@@ -35,6 +42,7 @@ type Model struct {
 	readErr      error
 	status       string
 	textarea     textarea.Model
+	viewport     viewport.Model
 	width        int
 	height       int
 	dirty        bool
@@ -42,10 +50,11 @@ type Model struct {
 	quitting     bool
 }
 
-func (m Model) Width() int            { return m.width }
-func (m Model) Height() int           { return m.height }
-func (m Model) FilePath() string      { return m.filePath }
-func (m Model) TextareaValue() string { return m.textarea.Value() }
+func (m Model) Width() int              { return m.width }
+func (m Model) Height() int             { return m.height }
+func (m Model) FilePath() string        { return m.filePath }
+func (m Model) TextareaValue() string   { return m.textarea.Value() }
+func (m Model) ViewportContent() string { return m.viewport.View() }
 func (m Model) PaneWidths() (int, int) {
 	if m.width < 4 {
 		return 0, 0
@@ -80,6 +89,20 @@ func saveFile(path, content string) tea.Cmd {
 	}
 }
 
+func renderMarkdown(content string, width int) tea.Cmd {
+	return func() tea.Msg {
+		renderer, err := glamour.NewTermRenderer(
+			glamour.WithAutoStyle(),
+			glamour.WithWordWrap(width),
+		)
+		if err != nil {
+			return renderMsg{err: fmt.Errorf("render: %w", err)}
+		}
+		rendered, err := renderer.Render(content)
+		return renderMsg{content: rendered, err: err}
+	}
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case fileLoadedMsg:
@@ -90,7 +113,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.content = msg.content
 		if m.mode == EditMode {
 			m.textarea = textarea.New()
-			leftWidth, _ := m.PaneWidths()
+			leftWidth, rightWidth := m.PaneWidths()
 			if leftWidth > 0 {
 				m.textarea.SetWidth(leftWidth - 2)
 			}
@@ -99,7 +122,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.textarea.SetValue(msg.content)
 			m.cleanContent = msg.content
-			return m, m.textarea.Focus()
+
+			rw := rightWidth - 2
+			if rw < 1 {
+				rw = 80
+			}
+			vph := m.height - 3
+			if vph < 1 {
+				vph = 1
+			}
+			m.viewport = viewport.New(rw, vph)
+
+			return m, tea.Batch(m.textarea.Focus(), renderMarkdown(msg.content, rw))
 		}
 		return m, nil
 	case saveMsg:
@@ -111,15 +145,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.dirty = false
 		}
 		return m, nil
+	case renderMsg:
+		if msg.err != nil {
+			m.status = fmt.Sprintf("Render error: %v", msg.err)
+		} else {
+			m.viewport.SetContent(msg.content)
+		}
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		leftWidth, _ := m.PaneWidths()
+		leftWidth, rightWidth := m.PaneWidths()
 		if leftWidth > 0 && m.mode == EditMode && m.content != "" {
 			m.textarea.SetWidth(leftWidth - 2)
 		}
 		if m.mode == EditMode && m.content != "" && m.height >= 4 {
 			m.textarea.SetHeight(m.height - 3)
+		}
+		if m.mode == EditMode && m.content != "" && rightWidth > 0 && m.height >= 4 {
+			m.viewport.Width = rightWidth - 2
+			m.viewport.Height = m.height - 3
 		}
 		return m, nil
 	case tea.KeyMsg:
@@ -168,7 +213,7 @@ func (m Model) View() string {
 		leftWidth, rightWidth := m.PaneWidths()
 
 		leftPane := paneStyle.Width(leftWidth).Render(m.textarea.View())
-		rightPane := paneStyle.Width(rightWidth).Render("— Preview —")
+		rightPane := paneStyle.Width(rightWidth).Render(m.viewport.View())
 
 		layout := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
 
