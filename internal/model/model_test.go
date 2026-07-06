@@ -3,12 +3,33 @@ package model_test
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lewispricey/mded/internal/model"
 )
+
+func processCmd(t *testing.T, m model.Model, cmd tea.Cmd) model.Model {
+	t.Helper()
+	if cmd == nil {
+		return m
+	}
+	msg := cmd()
+	rv := reflect.ValueOf(msg)
+	if rv.Kind() == reflect.Slice {
+		for i := 0; i < rv.Len(); i++ {
+			sub, ok := rv.Index(i).Interface().(tea.Cmd)
+			if ok && sub != nil {
+				m = processCmd(t, m, sub)
+			}
+		}
+		return m
+	}
+	m2, nextCmd := m.Update(msg)
+	return processCmd(t, m2.(model.Model), nextCmd)
+}
 
 func newTestModel() model.Model {
 	return model.New(model.ViewMode, "/tmp/test.md")
@@ -89,7 +110,7 @@ func TestFileReadError(t *testing.T) {
 
 // Edit mode tests
 
-func loadInEditMode(t *testing.T, content string) (model.Model, tea.Cmd) {
+func loadInEditMode(t *testing.T, content string) model.Model {
 	t.Helper()
 	dir := t.TempDir()
 	f := filepath.Join(dir, "test.md")
@@ -99,18 +120,18 @@ func loadInEditMode(t *testing.T, content string) (model.Model, tea.Cmd) {
 	cmd := m.Init()
 	msg := cmd()
 	m2, cmd2 := m.Update(msg)
-	return m2.(model.Model), cmd2
+	return processCmd(t, m2.(model.Model), cmd2)
 }
 
 func TestEditModeTextareaInit(t *testing.T) {
-	m, _ := loadInEditMode(t, "hello")
+	m := loadInEditMode(t, "hello")
 	if !strings.Contains(m.View(), "hello") {
 		t.Fatalf("expected view to contain initial content, got %q", m.View())
 	}
 }
 
 func TestEditModeTyping(t *testing.T) {
-	m, _ := loadInEditMode(t, "hello")
+	m := loadInEditMode(t, "hello")
 	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
 	got := m2.(model.Model)
 	if !strings.Contains(got.TextareaValue(), "hellox") {
@@ -119,7 +140,7 @@ func TestEditModeTyping(t *testing.T) {
 }
 
 func TestEditModeCtrlCQuits(t *testing.T) {
-	m, _ := loadInEditMode(t, "hello")
+	m := loadInEditMode(t, "hello")
 	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
 	if cmd == nil {
 		t.Fatal("expected a command for ctrl+c in edit mode")
@@ -130,7 +151,7 @@ func TestEditModeCtrlCQuits(t *testing.T) {
 }
 
 func TestSaveSuccess(t *testing.T) {
-	m, _ := loadInEditMode(t, "hello")
+	m := loadInEditMode(t, "hello")
 	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
 	got := m2.(model.Model)
 
@@ -187,7 +208,7 @@ func TestSaveError(t *testing.T) {
 }
 
 func TestStatusClearedOnKeystroke(t *testing.T) {
-	m, _ := loadInEditMode(t, "hello")
+	m := loadInEditMode(t, "hello")
 	_, saveCmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
 	msg := saveCmd()
 	m2, _ := m.Update(msg)
@@ -212,7 +233,7 @@ func TestCtrlSIgnoredInViewMode(t *testing.T) {
 }
 
 func TestUnsavedChangedBlocksQuit(t *testing.T) {
-	m, _ := loadInEditMode(t, "hello")
+	m := loadInEditMode(t, "hello")
 	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
 	got := m2.(model.Model)
 
@@ -236,7 +257,7 @@ func TestUnsavedChangedBlocksQuit(t *testing.T) {
 }
 
 func TestCleanFileExitsImmediately(t *testing.T) {
-	m, _ := loadInEditMode(t, "hello")
+	m := loadInEditMode(t, "hello")
 	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
 	if cmd == nil {
 		t.Fatal("expected a command for ctrl+c on clean file")
@@ -247,7 +268,7 @@ func TestCleanFileExitsImmediately(t *testing.T) {
 }
 
 func TestKeypressResetsQuitting(t *testing.T) {
-	m, _ := loadInEditMode(t, "hello")
+	m := loadInEditMode(t, "hello")
 	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
 	got := m2.(model.Model)
 
@@ -264,7 +285,7 @@ func TestKeypressResetsQuitting(t *testing.T) {
 }
 
 func TestSaveClearsDirty(t *testing.T) {
-	m, _ := loadInEditMode(t, "hello")
+	m := loadInEditMode(t, "hello")
 	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
 	got := m2.(model.Model)
 
@@ -283,7 +304,7 @@ func TestSaveClearsDirty(t *testing.T) {
 }
 
 func TestUndoRestoreClearsDirty(t *testing.T) {
-	m, _ := loadInEditMode(t, "hello")
+	m := loadInEditMode(t, "hello")
 	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
 	got := m2.(model.Model)
 	m3, _ := got.Update(tea.KeyMsg{Type: tea.KeyBackspace})
@@ -299,7 +320,7 @@ func TestUndoRestoreClearsDirty(t *testing.T) {
 }
 
 func TestQuittingSaveClearsQuitting(t *testing.T) {
-	m, _ := loadInEditMode(t, "hello")
+	m := loadInEditMode(t, "hello")
 	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
 	got := m2.(model.Model)
 
@@ -325,7 +346,7 @@ func TestQuittingSaveClearsQuitting(t *testing.T) {
 
 func TestSplitLayoutPaneWidths(t *testing.T) {
 	for _, width := range []int{80, 120, 200} {
-		m, _ := loadInEditMode(t, "hello")
+		m := loadInEditMode(t, "hello")
 		m2, _ := m.Update(tea.WindowSizeMsg{Width: width, Height: 40})
 		got := m2.(model.Model)
 		left, right := got.PaneWidths()
@@ -338,20 +359,17 @@ func TestSplitLayoutPaneWidths(t *testing.T) {
 }
 
 func TestSplitLayoutBorders(t *testing.T) {
-	m, _ := loadInEditMode(t, "# Hello\n\nWorld")
+	m := loadInEditMode(t, "# Hello\n\nWorld")
 	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	got := m2.(model.Model)
 	v := got.View()
 	if !strings.Contains(v, "╭") {
 		t.Fatal("expected top-left border corner in split layout view")
 	}
-	if !strings.Contains(v, "— Preview —") {
-		t.Fatal("expected placeholder text in split layout view")
-	}
 }
 
 func TestSplitLayoutResize(t *testing.T) {
-	m, _ := loadInEditMode(t, "# Hello\n\nWorld")
+	m := loadInEditMode(t, "# Hello\n\nWorld")
 
 	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 40})
 	got80 := m2.(model.Model)
@@ -371,7 +389,7 @@ func TestSplitLayoutResize(t *testing.T) {
 
 func TestSplitLayoutHeightConstraint(t *testing.T) {
 	content := strings.Repeat("line of text for testing\n", 50)
-	m, _ := loadInEditMode(t, content)
+	m := loadInEditMode(t, content)
 	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 	got := m2.(model.Model)
 	v := got.View()
@@ -381,8 +399,27 @@ func TestSplitLayoutHeightConstraint(t *testing.T) {
 	}
 }
 
+func TestViewportContainsRenderedMarkdown(t *testing.T) {
+	m := loadInEditMode(t, "**bold** and *italic*")
+	vc := m.ViewportContent()
+	if vc == "" {
+		t.Fatal("expected non-empty viewport content after render")
+	}
+	if strings.Contains(vc, "**bold**") {
+		t.Fatal("expected rendered markdown, found raw **bold** in viewport")
+	}
+}
+
+func TestViewportInitialContent(t *testing.T) {
+	m := loadInEditMode(t, "# Hello")
+	vc := m.ViewportContent()
+	if vc == "" {
+		t.Fatal("expected non-empty viewport content after render")
+	}
+}
+
 func TestEditModeQTypes(t *testing.T) {
-	m, _ := loadInEditMode(t, "hel")
+	m := loadInEditMode(t, "hel")
 	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
 	got := m2.(model.Model)
 	if !strings.Contains(got.TextareaValue(), "helq") {
