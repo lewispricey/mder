@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"charm.land/bubbletea/v2"
-	"github.com/yourname/mded/internal/model"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lewispricey/mded/internal/model"
 )
 
 func newTestModel() model.Model {
@@ -16,7 +16,7 @@ func newTestModel() model.Model {
 
 func TestQuitKey(t *testing.T) {
 	m := newTestModel()
-	_, cmd := m.Update(tea.KeyPressMsg{Text: "q", Code: 'q'})
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
 	if cmd == nil {
 		t.Fatal("expected a command for 'q' key")
 	}
@@ -27,7 +27,7 @@ func TestQuitKey(t *testing.T) {
 
 func TestQuitCtrlC(t *testing.T) {
 	m := newTestModel()
-	_, cmd := m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
 	if cmd == nil {
 		t.Fatal("expected a command for ctrl+c")
 	}
@@ -38,7 +38,7 @@ func TestQuitCtrlC(t *testing.T) {
 
 func TestNonQuitKey(t *testing.T) {
 	m := newTestModel()
-	_, cmd := m.Update(tea.KeyPressMsg{Text: "a", Code: 'a'})
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
 	if cmd != nil {
 		t.Fatal("expected no command for non-quit key")
 	}
@@ -54,8 +54,8 @@ func TestFileReadSuccess(t *testing.T) {
 	cmd := m.Init()
 	msg := cmd()
 	m2, _ := m.Update(msg)
-	if !strings.Contains(m2.View().Content, want) {
-		t.Fatalf("expected view to contain %q, got %q", want, m2.View().Content)
+	if !strings.Contains(m2.View(), want) {
+		t.Fatalf("expected view to contain %q, got %q", want, m2.View())
 	}
 }
 
@@ -82,7 +82,7 @@ func TestFileReadError(t *testing.T) {
 	if _, ok := cmd2().(tea.QuitMsg); !ok {
 		t.Fatal("expected QuitMsg on read error")
 	}
-	if !strings.Contains(m2.View().Content, "Error") {
-		t.Fatalf("expected error message in view, got %q", m2.View().Content)
+	if !strings.Contains(m2.View(), "Error") {
+		t.Fatalf("expected error message in view, got %q", m2.View())
 	}
 }

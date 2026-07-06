@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"charm.land/bubbletea/v2"
-	"github.com/yourname/mded/internal/cmd"
-	"github.com/yourname/mded/internal/model"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lewispricey/mded/internal/cmd"
+	"github.com/lewispricey/mded/internal/model"
 )
 
 func main() {
@@ -17,7 +17,7 @@ func main() {
 	}
 
 	m := model.New(mode, path)
-	p := tea.NewProgram(m)
+	p := tea.NewProgram(m, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

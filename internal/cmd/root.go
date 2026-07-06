@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/lewispricey/mded/internal/model"
 	"github.com/spf13/cobra"
-	"github.com/yourname/mded/internal/model"
 )
 
 var (

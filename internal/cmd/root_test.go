@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/yourname/mded/internal/cmd"
+	"github.com/lewispricey/mded/internal/cmd"
 )
 
 func runCommand(t *testing.T, args ...string) error {
