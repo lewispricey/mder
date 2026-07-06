@@ -26,14 +26,17 @@ type saveMsg struct {
 }
 
 type Model struct {
-	mode     Mode
-	filePath string
-	content  string
-	readErr  error
-	status   string
-	textarea textarea.Model
-	width    int
-	height   int
+	mode         Mode
+	filePath     string
+	content      string
+	readErr      error
+	status       string
+	textarea     textarea.Model
+	width        int
+	height       int
+	dirty        bool
+	cleanContent string
+	quitting     bool
 }
 
 func (m Model) Width() int            { return m.width }
@@ -76,6 +79,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.mode == EditMode {
 			m.textarea = textarea.New()
 			m.textarea.SetValue(msg.content)
+			m.cleanContent = msg.content
 			return m, m.textarea.Focus()
 		}
 		return m, nil
@@ -84,6 +88,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = fmt.Sprintf("Save error: %v", msg.err)
 		} else {
 			m.status = "Saved"
+			m.cleanContent = m.textarea.Value()
+			m.dirty = false
 		}
 		return m, nil
 	case tea.WindowSizeMsg:
@@ -93,14 +99,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		m.status = ""
 		if keybinds.IsHardQuit(msg) {
+			if m.mode == EditMode && m.dirty {
+				if m.quitting {
+					return m, tea.Quit
+				}
+				m.quitting = true
+				return m, nil
+			}
 			return m, tea.Quit
 		}
+		m.quitting = false
 		if keybinds.IsSave(msg) && m.mode == EditMode {
 			return m, saveFile(m.filePath, m.textarea.Value())
 		}
 		if m.mode == EditMode {
 			var cmd tea.Cmd
 			m.textarea, cmd = m.textarea.Update(msg)
+			m.dirty = m.textarea.Value() != m.cleanContent
 			return m, cmd
 		}
 		if keybinds.IsQuit(msg) {
@@ -125,8 +140,12 @@ func (m Model) View() string {
 		return "Loading...\n\n" + quitHint
 	case m.mode == EditMode:
 		v := m.textarea.View()
-		if m.status != "" {
+		if m.quitting {
+			v += "\nUnsaved changes! Press ctrl+c again to quit."
+		} else if m.status != "" {
 			v += "\n" + m.status
+		} else {
+			v += "\n" + quitHint
 		}
 		return v
 	default:
