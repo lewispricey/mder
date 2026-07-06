@@ -90,6 +90,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.content = msg.content
 		if m.mode == EditMode {
 			m.textarea = textarea.New()
+			leftWidth, _ := m.PaneWidths()
+			if leftWidth > 0 {
+				m.textarea.SetWidth(leftWidth - 2)
+			}
+			if m.height >= 4 {
+				m.textarea.SetHeight(m.height - 3)
+			}
 			m.textarea.SetValue(msg.content)
 			m.cleanContent = msg.content
 			return m, m.textarea.Focus()
@@ -110,6 +117,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		leftWidth, _ := m.PaneWidths()
 		if leftWidth > 0 && m.mode == EditMode && m.content != "" {
 			m.textarea.SetWidth(leftWidth - 2)
+		}
+		if m.mode == EditMode && m.content != "" && m.height >= 4 {
+			m.textarea.SetHeight(m.height - 3)
 		}
 		return m, nil
 	case tea.KeyMsg:

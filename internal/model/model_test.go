@@ -352,16 +352,32 @@ func TestSplitLayoutBorders(t *testing.T) {
 
 func TestSplitLayoutResize(t *testing.T) {
 	m, _ := loadInEditMode(t, "# Hello\n\nWorld")
+
 	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 40})
+	got80 := m2.(model.Model)
+	left80, right80 := got80.PaneWidths()
+
+	m3, _ := got80.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	got120 := m3.(model.Model)
+	left120, right120 := got120.PaneWidths()
+
+	if left80 == left120 || right80 == right120 {
+		t.Fatal("expected pane widths to change after resize")
+	}
+	if got80.View() == got120.View() {
+		t.Fatal("expected view to differ after resize")
+	}
+}
+
+func TestSplitLayoutHeightConstraint(t *testing.T) {
+	content := strings.Repeat("line of text for testing\n", 50)
+	m, _ := loadInEditMode(t, content)
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 24})
 	got := m2.(model.Model)
-	v80 := got.View()
-
-	m3, _ := got.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
-	got2 := m3.(model.Model)
-	v120 := got2.View()
-
-	if v80 == v120 {
-		t.Fatal("expected view to differ after resize from 80 to 120")
+	v := got.View()
+	lines := strings.Count(v, "\n")
+	if lines > 30 {
+		t.Fatalf("view exceeds terminal height: %d lines > 24", lines)
 	}
 }
 
