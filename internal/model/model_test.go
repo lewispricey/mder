@@ -59,6 +59,18 @@ func TestFileReadSuccess(t *testing.T) {
 	}
 }
 
+func TestWindowResize(t *testing.T) {
+	m := newTestModel()
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	got := m2.(model.Model)
+	if got.Width() != 120 {
+		t.Fatalf("expected width 120, got %d", got.Width())
+	}
+	if got.Height() != 40 {
+		t.Fatalf("expected height 40, got %d", got.Height())
+	}
+}
+
 func TestFileReadError(t *testing.T) {
 	m := model.New(model.ViewMode, "/nonexistent/path.md")
 	cmd := m.Init()
