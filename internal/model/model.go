@@ -21,11 +21,16 @@ type fileLoadedMsg struct {
 	err     error
 }
 
+type saveMsg struct {
+	err error
+}
+
 type Model struct {
 	mode     Mode
 	filePath string
 	content  string
 	readErr  error
+	status   string
 	textarea textarea.Model
 	width    int
 	height   int
@@ -33,6 +38,7 @@ type Model struct {
 
 func (m Model) Width() int            { return m.width }
 func (m Model) Height() int           { return m.height }
+func (m Model) FilePath() string      { return m.filePath }
 func (m Model) TextareaValue() string { return m.textarea.Value() }
 
 func New(mode Mode, filePath string) Model {
@@ -46,6 +52,16 @@ func (m Model) Init() tea.Cmd {
 	return func() tea.Msg {
 		data, err := os.ReadFile(m.filePath)
 		return fileLoadedMsg{content: string(data), err: err}
+	}
+}
+
+func saveFile(path, content string) tea.Cmd {
+	return func() tea.Msg {
+		err := os.WriteFile(path, []byte(content), 0644)
+		if err != nil {
+			err = fmt.Errorf("save %s: %w", path, err)
+		}
+		return saveMsg{err: err}
 	}
 }
 
@@ -63,13 +79,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.textarea.Focus()
 		}
 		return m, nil
+	case saveMsg:
+		if msg.err != nil {
+			m.status = fmt.Sprintf("Save error: %v", msg.err)
+		} else {
+			m.status = "Saved"
+		}
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
 		return m, nil
 	case tea.KeyMsg:
+		m.status = ""
 		if keybinds.IsHardQuit(msg) {
 			return m, tea.Quit
+		}
+		if keybinds.IsSave(msg) && m.mode == EditMode {
+			return m, saveFile(m.filePath, m.textarea.Value())
 		}
 		if m.mode == EditMode {
 			var cmd tea.Cmd
@@ -97,7 +124,11 @@ func (m Model) View() string {
 	case m.content == "":
 		return "Loading...\n\n" + quitHint
 	case m.mode == EditMode:
-		return m.textarea.View()
+		v := m.textarea.View()
+		if m.status != "" {
+			v += "\n" + m.status
+		}
+		return v
 	default:
 		return m.content
 	}

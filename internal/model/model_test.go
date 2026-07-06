@@ -129,6 +129,88 @@ func TestEditModeCtrlCQuits(t *testing.T) {
 	}
 }
 
+func TestSaveSuccess(t *testing.T) {
+	m, _ := loadInEditMode(t, "hello")
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
+	got := m2.(model.Model)
+
+	_, saveCmd := got.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	if saveCmd == nil {
+		t.Fatal("expected save command for ctrl+s")
+	}
+	msg := saveCmd()
+	m3, _ := got.Update(msg)
+	got2 := m3.(model.Model)
+
+	data, err := os.ReadFile(got2.FilePath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "hello!" {
+		t.Fatalf("expected file content 'hello!', got %q", string(data))
+	}
+	if !strings.Contains(got2.View(), "Saved") {
+		t.Fatalf("expected 'Saved' status after save, got %q", got2.View())
+	}
+}
+
+func TestSaveError(t *testing.T) {
+	dir := t.TempDir()
+	f := filepath.Join(dir, "readonly.md")
+	os.WriteFile(f, []byte("hello"), 0444)
+
+	m := model.New(model.EditMode, f)
+	cmd := m.Init()
+	msg := cmd()
+	m2, _ := m.Update(msg)
+	got := m2.(model.Model)
+
+	_, saveCmd := got.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	if saveCmd == nil {
+		t.Fatal("expected save command")
+	}
+	saveMsgVal := saveCmd()
+	m3, _ := got.Update(saveMsgVal)
+	got2 := m3.(model.Model)
+
+	if !strings.Contains(got2.View(), "Save error") {
+		t.Fatalf("expected save error in view, got %q", got2.View())
+	}
+
+	data, err := os.ReadFile(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "hello" {
+		t.Fatalf("expected original content preserved, got %q", string(data))
+	}
+}
+
+func TestStatusClearedOnKeystroke(t *testing.T) {
+	m, _ := loadInEditMode(t, "hello")
+	_, saveCmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	msg := saveCmd()
+	m2, _ := m.Update(msg)
+	got := m2.(model.Model)
+
+	if !strings.Contains(got.View(), "Saved") {
+		t.Fatal("expected 'Saved' status")
+	}
+	m3, _ := got.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	got2 := m3.(model.Model)
+	if strings.Contains(got2.View(), "Saved") {
+		t.Fatal("status should clear on keystroke")
+	}
+}
+
+func TestCtrlSIgnoredInViewMode(t *testing.T) {
+	m := newTestModel()
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	if cmd != nil {
+		t.Fatal("expected no command for ctrl+s in view mode")
+	}
+}
+
 func TestEditModeQTypes(t *testing.T) {
 	m, _ := loadInEditMode(t, "hel")
 	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})

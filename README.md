@@ -16,6 +16,7 @@ Flags:
 
 | Key | Action |
 |---|---|
+| `Ctrl+S` | Save (edit mode) |
 | `q` | Quit (view mode) |
 | `Ctrl+C` | Quit |
 
