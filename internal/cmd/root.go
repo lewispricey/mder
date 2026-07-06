@@ -5,14 +5,16 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/yourname/mded/internal/model"
 )
 
 var (
-	viewMode bool
-	editMode bool
+	parsedMode model.Mode
+	parsedPath string
 )
 
 func NewRootCmd() *cobra.Command {
+	var viewMode, editMode bool
 	cmd := &cobra.Command{
 		Use:           "mded [flags] <file>",
 		Short:         "Markdown editor",
@@ -26,16 +28,15 @@ func NewRootCmd() *cobra.Command {
 				return fmt.Errorf("cannot set both --view and --edit")
 			}
 
-			mode := "edit"
+			parsedMode = model.EditMode
 			if viewMode {
-				mode = "view"
+				parsedMode = model.ViewMode
 			}
+			parsedPath = path
 
 			if _, err := os.Stat(path); err != nil {
 				return fmt.Errorf("file %q does not exist", path)
 			}
-
-			fmt.Printf("Opening: %s in %s mode\n", path, mode)
 			return nil
 		},
 	}
@@ -45,9 +46,11 @@ func NewRootCmd() *cobra.Command {
 	return cmd
 }
 
-func Execute() {
-	if err := NewRootCmd().Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+func ParseCLI() (model.Mode, string, error) {
+	root := NewRootCmd()
+	root.SetArgs(os.Args[1:])
+	if err := root.Execute(); err != nil {
+		return 0, "", err
 	}
+	return parsedMode, parsedPath, nil
 }
