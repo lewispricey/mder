@@ -323,6 +323,48 @@ func TestQuittingSaveClearsQuitting(t *testing.T) {
 	}
 }
 
+func TestSplitLayoutPaneWidths(t *testing.T) {
+	for _, width := range []int{80, 120, 200} {
+		m, _ := loadInEditMode(t, "hello")
+		m2, _ := m.Update(tea.WindowSizeMsg{Width: width, Height: 40})
+		got := m2.(model.Model)
+		left, right := got.PaneWidths()
+		diff := left - right
+		if diff < -1 || diff > 1 {
+			t.Errorf("width %d: pane widths differ by %d (left=%d, right=%d)",
+				width, diff, left, right)
+		}
+	}
+}
+
+func TestSplitLayoutBorders(t *testing.T) {
+	m, _ := loadInEditMode(t, "# Hello\n\nWorld")
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	got := m2.(model.Model)
+	v := got.View()
+	if !strings.Contains(v, "╭") {
+		t.Fatal("expected top-left border corner in split layout view")
+	}
+	if !strings.Contains(v, "— Preview —") {
+		t.Fatal("expected placeholder text in split layout view")
+	}
+}
+
+func TestSplitLayoutResize(t *testing.T) {
+	m, _ := loadInEditMode(t, "# Hello\n\nWorld")
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 80, Height: 40})
+	got := m2.(model.Model)
+	v80 := got.View()
+
+	m3, _ := got.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	got2 := m3.(model.Model)
+	v120 := got2.View()
+
+	if v80 == v120 {
+		t.Fatal("expected view to differ after resize from 80 to 120")
+	}
+}
+
 func TestEditModeQTypes(t *testing.T) {
 	m, _ := loadInEditMode(t, "hel")
 	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})

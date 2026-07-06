@@ -6,8 +6,11 @@ import (
 
 	"github.com/charmbracelet/bubbles/textarea"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/lewispricey/mded/internal/keybinds"
 )
+
+var paneStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 
 type Mode int
 
@@ -43,6 +46,15 @@ func (m Model) Width() int            { return m.width }
 func (m Model) Height() int           { return m.height }
 func (m Model) FilePath() string      { return m.filePath }
 func (m Model) TextareaValue() string { return m.textarea.Value() }
+func (m Model) PaneWidths() (int, int) {
+	if m.width < 4 {
+		return 0, 0
+	}
+	gap := 1
+	leftWidth := (m.width - gap) / 2
+	rightWidth := m.width - leftWidth - gap
+	return leftWidth, rightWidth
+}
 
 func New(mode Mode, filePath string) Model {
 	return Model{
@@ -95,6 +107,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		leftWidth, _ := m.PaneWidths()
+		if leftWidth > 0 && m.mode == EditMode && m.content != "" {
+			m.textarea.SetWidth(leftWidth - 2)
+		}
 		return m, nil
 	case tea.KeyMsg:
 		m.status = ""
@@ -139,15 +155,22 @@ func (m Model) View() string {
 	case m.content == "":
 		return "Loading...\n\n" + quitHint
 	case m.mode == EditMode:
-		v := m.textarea.View()
+		leftWidth, rightWidth := m.PaneWidths()
+
+		leftPane := paneStyle.Width(leftWidth).Render(m.textarea.View())
+		rightPane := paneStyle.Width(rightWidth).Render("— Preview —")
+
+		layout := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightPane)
+
+		var footer string
 		if m.quitting {
-			v += "\nUnsaved changes! Press ctrl+c again to quit."
+			footer = "Unsaved changes! Press ctrl+c again to quit."
 		} else if m.status != "" {
-			v += "\n" + m.status
+			footer = m.status
 		} else {
-			v += "\n" + quitHint
+			footer = quitHint
 		}
-		return v
+		return layout + "\n" + footer
 	default:
 		return m.content
 	}
