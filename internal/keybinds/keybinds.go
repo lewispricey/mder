@@ -1,6 +1,6 @@
 package keybinds
 
-import tea "charm.land/bubbletea/v2"
+import tea "github.com/charmbracelet/bubbletea"
 
 func IsQuit(msg tea.KeyMsg) bool {
 	s := msg.String()

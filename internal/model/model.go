@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"charm.land/bubbletea/v2"
-	"github.com/yourname/mded/internal/keybinds"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/lewispricey/mded/internal/keybinds"
 )
 
 type Mode int
@@ -67,17 +67,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) View() tea.View {
-	var s string
+func (m Model) View() string {
 	switch {
 	case m.readErr != nil:
-		s = fmt.Sprintf("Error: %v\n\nPress q to quit.", m.readErr)
+		return fmt.Sprintf("Error: %v\n\nPress q to quit.", m.readErr)
 	case m.content == "":
-		s = "Loading...\n\nPress q to quit."
+		return "Loading...\n\nPress q to quit."
 	default:
-		s = m.content
+		return m.content
 	}
-	v := tea.NewView(s)
-	v.AltScreen = true
-	return v
 }
