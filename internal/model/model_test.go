@@ -211,6 +211,93 @@ func TestCtrlSIgnoredInViewMode(t *testing.T) {
 	}
 }
 
+func TestUnsavedChangedBlocksQuit(t *testing.T) {
+	m, _ := loadInEditMode(t, "hello")
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
+	got := m2.(model.Model)
+
+	m3, cmd := got.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	got2 := m3.(model.Model)
+	if cmd != nil {
+		t.Fatal("expected no quit command on first ctrl+c with unsaved changes")
+	}
+	if !strings.Contains(got2.View(), "Unsaved changes") {
+		t.Fatalf("expected quitting prompt in view, got %q", got2.View())
+	}
+
+	m4, cmd2 := got2.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	_ = m4
+	if cmd2 == nil {
+		t.Fatal("expected a command on second ctrl+c")
+	}
+	if _, ok := cmd2().(tea.QuitMsg); !ok {
+		t.Fatal("expected QuitMsg on second ctrl+c")
+	}
+}
+
+func TestCleanFileExitsImmediately(t *testing.T) {
+	m, _ := loadInEditMode(t, "hello")
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	if cmd == nil {
+		t.Fatal("expected a command for ctrl+c on clean file")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Fatal("expected QuitMsg for ctrl+c on clean file")
+	}
+}
+
+func TestKeypressResetsQuitting(t *testing.T) {
+	m, _ := loadInEditMode(t, "hello")
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
+	got := m2.(model.Model)
+
+	m3, _ := got.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	got2 := m3.(model.Model)
+
+	m4, _ := got2.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	got3 := m4.(model.Model)
+
+	_, cmd := got3.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	if cmd != nil {
+		t.Fatal("expected first ctrl+c still blocked after keypress resets quitting")
+	}
+}
+
+func TestSaveClearsDirty(t *testing.T) {
+	m, _ := loadInEditMode(t, "hello")
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
+	got := m2.(model.Model)
+
+	_, saveCmd := got.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	msg := saveCmd()
+	m3, _ := got.Update(msg)
+	got2 := m3.(model.Model)
+
+	_, cmd := got2.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	if cmd == nil {
+		t.Fatal("expected quit command after save")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Fatal("expected QuitMsg after save")
+	}
+}
+
+func TestUndoRestoreClearsDirty(t *testing.T) {
+	m, _ := loadInEditMode(t, "hello")
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	got := m2.(model.Model)
+	m3, _ := got.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	got2 := m3.(model.Model)
+
+	_, cmd := got2.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	if cmd == nil {
+		t.Fatal("expected quit command when content restored to original")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Fatal("expected QuitMsg when content restored to original")
+	}
+}
+
 func TestEditModeQTypes(t *testing.T) {
 	m, _ := loadInEditMode(t, "hel")
 	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})

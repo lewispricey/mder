@@ -18,7 +18,7 @@ Flags:
 |---|---|
 | `Ctrl+S` | Save (edit mode) |
 | `q` | Quit (view mode) |
-| `Ctrl+C` | Quit |
+| `Ctrl+C` | Quit (press twice when unsaved changes exist) |
 
 ## Development
 
