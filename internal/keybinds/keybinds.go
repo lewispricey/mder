@@ -2,7 +2,10 @@ package keybinds
 
 import tea "github.com/charmbracelet/bubbletea"
 
+func IsHardQuit(msg tea.KeyMsg) bool {
+	return msg.String() == "ctrl+c"
+}
+
 func IsQuit(msg tea.KeyMsg) bool {
-	s := msg.String()
-	return s == "q" || s == "ctrl+c"
+	return msg.String() == "q" || IsHardQuit(msg)
 }

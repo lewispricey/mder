@@ -68,7 +68,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 	case tea.KeyMsg:
-		if msg.String() == "ctrl+c" {
+		if keybinds.IsHardQuit(msg) {
 			return m, tea.Quit
 		}
 		if m.mode == EditMode {
