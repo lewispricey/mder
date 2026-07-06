@@ -1,3 +1,7 @@
 package main
 
-func main() {}
+import "github.com/yourname/mded/internal/cmd"
+
+func main() {
+	cmd.Execute()
+}
