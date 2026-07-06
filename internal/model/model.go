@@ -29,6 +29,9 @@ type Model struct {
 	height   int
 }
 
+func (m Model) Width() int  { return m.width }
+func (m Model) Height() int { return m.height }
+
 func New(mode Mode, filePath string) Model {
 	return Model{
 		mode:     mode,
@@ -51,6 +54,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		m.content = msg.content
+		return m, nil
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
 		return m, nil
 	case tea.KeyMsg:
 		if keybinds.IsQuit(msg) {
