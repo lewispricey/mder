@@ -11,10 +11,14 @@
 *.out
 
 # IDE
-.idea/ .vscode/ *.swp *.swo
+.idea/
+.vscode/
+*.swp
+*.swo
 
 # OS
-.DS_Store Thumbs.db
+.DS_Store
+Thumbs.db
 
 # GoReleaser output
 dist/

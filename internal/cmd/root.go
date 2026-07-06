@@ -35,7 +35,7 @@ func NewRootCmd() *cobra.Command {
 			parsedPath = path
 
 			if _, err := os.Stat(path); err != nil {
-				return fmt.Errorf("file %q does not exist", path)
+				return fmt.Errorf("cannot open %q: %w", path, err)
 			}
 			return nil
 		},
