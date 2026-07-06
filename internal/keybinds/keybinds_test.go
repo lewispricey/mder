@@ -35,6 +35,20 @@ func TestIsQuitCtrlC(t *testing.T) {
 	}
 }
 
+func TestIsSaveCtrlS(t *testing.T) {
+	msg := tea.KeyMsg{Type: tea.KeyCtrlS}
+	if !keybinds.IsSave(msg) {
+		t.Fatal("expected ctrl+s to be a save key")
+	}
+}
+
+func TestIsSaveNonSave(t *testing.T) {
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'s'}}
+	if keybinds.IsSave(msg) {
+		t.Fatal("expected 's' not to be a save key")
+	}
+}
+
 func TestIsQuitNonQuit(t *testing.T) {
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}}
 	if keybinds.IsQuit(msg) {
