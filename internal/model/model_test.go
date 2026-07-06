@@ -298,6 +298,31 @@ func TestUndoRestoreClearsDirty(t *testing.T) {
 	}
 }
 
+func TestQuittingSaveClearsQuitting(t *testing.T) {
+	m, _ := loadInEditMode(t, "hello")
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
+	got := m2.(model.Model)
+
+	m3, _ := got.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	got2 := m3.(model.Model)
+
+	_, saveCmd := got2.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	if saveCmd == nil {
+		t.Fatal("expected save command")
+	}
+	msg := saveCmd()
+	m4, _ := got2.Update(msg)
+	got3 := m4.(model.Model)
+
+	_, cmd := got3.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	if cmd == nil {
+		t.Fatal("expected quit command after save during quitting state")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Fatal("expected QuitMsg after save during quitting state")
+	}
+}
+
 func TestEditModeQTypes(t *testing.T) {
 	m, _ := loadInEditMode(t, "hel")
 	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})

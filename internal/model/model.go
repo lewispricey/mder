@@ -144,6 +144,8 @@ func (m Model) View() string {
 			v += "\nUnsaved changes! Press ctrl+c again to quit."
 		} else if m.status != "" {
 			v += "\n" + m.status
+		} else {
+			v += "\n" + quitHint
 		}
 		return v
 	default:
