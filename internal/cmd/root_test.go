@@ -37,7 +37,7 @@ func TestEditMode(t *testing.T) {
 	}
 }
 
-func TestDefaultModeIsEdit(t *testing.T) {
+func TestDefaultModeIsView(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "test.md")
 	os.WriteFile(f, []byte("# hi"), 0644)

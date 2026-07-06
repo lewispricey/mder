@@ -8,15 +8,16 @@ A terminal-based markdown viewer and live editor. Work in progress.
 mded [flags] <file>
 
 Flags:
-      --view    Open in view-only mode
-      --edit    Open in edit mode (default)
+      --edit    Open in edit mode
+      --view    Open in view-only mode (default)
 ```
 
 ## Key Bindings
 
 | Key | Action |
 |---|---|
-| `q` / `Ctrl+C` | Quit |
+| `q` | Quit (view mode) |
+| `Ctrl+C` | Quit |
 
 ## Development
 

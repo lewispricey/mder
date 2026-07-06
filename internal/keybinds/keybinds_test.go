@@ -7,6 +7,20 @@ import (
 	"github.com/lewispricey/mded/internal/keybinds"
 )
 
+func TestIsHardQuitCtrlC(t *testing.T) {
+	msg := tea.KeyMsg{Type: tea.KeyCtrlC}
+	if !keybinds.IsHardQuit(msg) {
+		t.Fatal("expected ctrl+c to be a hard quit")
+	}
+}
+
+func TestIsHardQuitQ(t *testing.T) {
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}}
+	if keybinds.IsHardQuit(msg) {
+		t.Fatal("expected 'q' not to be a hard quit")
+	}
+}
+
 func TestIsQuitQ(t *testing.T) {
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}}
 	if !keybinds.IsQuit(msg) {

@@ -28,9 +28,9 @@ func NewRootCmd() *cobra.Command {
 				return fmt.Errorf("cannot set both --view and --edit")
 			}
 
-			parsedMode = model.EditMode
-			if viewMode {
-				parsedMode = model.ViewMode
+			parsedMode = model.ViewMode
+			if editMode {
+				parsedMode = model.EditMode
 			}
 			parsedPath = path
 
