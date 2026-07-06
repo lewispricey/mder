@@ -12,6 +12,12 @@ Flags:
       --edit    Open in edit mode (default)
 ```
 
+## Key Bindings
+
+| Key | Action |
+|---|---|
+| `q` / `Ctrl+C` | Quit |
+
 ## Development
 
 Prerequisites: Go 1.22+
