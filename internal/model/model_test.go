@@ -86,3 +86,59 @@ func TestFileReadError(t *testing.T) {
 		t.Fatalf("expected error message in view, got %q", m2.View())
 	}
 }
+
+// Edit mode tests
+
+func loadInEditMode(t *testing.T, content string) (model.Model, tea.Cmd) {
+	t.Helper()
+	dir := t.TempDir()
+	f := filepath.Join(dir, "test.md")
+	os.WriteFile(f, []byte(content), 0644)
+
+	m := model.New(model.EditMode, f)
+	cmd := m.Init()
+	msg := cmd()
+	m2, cmd2 := m.Update(msg)
+	return m2.(model.Model), cmd2
+}
+
+func TestEditModeTextareaInit(t *testing.T) {
+	m, _ := loadInEditMode(t, "hello")
+	if !strings.Contains(m.View(), "hello") {
+		t.Fatalf("expected view to contain initial content, got %q", m.View())
+	}
+}
+
+func TestEditModeTyping(t *testing.T) {
+	m, _ := loadInEditMode(t, "hello")
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	got := m2.(model.Model)
+	if !strings.Contains(got.TextareaValue(), "hellox") {
+		t.Fatalf("expected textarea value to contain typed char, got %q", got.TextareaValue())
+	}
+}
+
+func TestEditModeCtrlCQuits(t *testing.T) {
+	m, _ := loadInEditMode(t, "hello")
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	if cmd == nil {
+		t.Fatal("expected a command for ctrl+c in edit mode")
+	}
+	if _, ok := cmd().(tea.QuitMsg); !ok {
+		t.Fatal("expected QuitMsg for ctrl+c in edit mode")
+	}
+}
+
+func TestEditModeQTypes(t *testing.T) {
+	m, _ := loadInEditMode(t, "hel")
+	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
+	got := m2.(model.Model)
+	if !strings.Contains(got.TextareaValue(), "helq") {
+		t.Fatalf("expected 'q' to be typed, got %q", got.TextareaValue())
+	}
+	if cmd != nil {
+		if _, ok := cmd().(tea.QuitMsg); ok {
+			t.Fatal("did not expect QuitMsg when typing in edit mode")
+		}
+	}
+}
