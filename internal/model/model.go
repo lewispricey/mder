@@ -1,6 +1,7 @@
 package model
 
 import (
+	"fmt"
 	"os"
 
 	"charm.land/bubbletea/v2"
@@ -63,7 +64,7 @@ func (m Model) View() tea.View {
 	var s string
 	switch {
 	case m.readErr != nil:
-		s = "Error reading file.\n\nPress q to quit."
+		s = fmt.Sprintf("Error: %v\n\nPress q to quit.", m.readErr)
 	case m.content == "":
 		s = "Loading...\n\nPress q to quit."
 	default:
