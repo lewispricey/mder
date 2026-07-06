@@ -176,6 +176,14 @@ func TestSaveError(t *testing.T) {
 	if !strings.Contains(got2.View(), "Save error") {
 		t.Fatalf("expected save error in view, got %q", got2.View())
 	}
+
+	data, err := os.ReadFile(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "hello" {
+		t.Fatalf("expected original content preserved, got %q", string(data))
+	}
 }
 
 func TestStatusClearedOnKeystroke(t *testing.T) {
@@ -192,6 +200,14 @@ func TestStatusClearedOnKeystroke(t *testing.T) {
 	got2 := m3.(model.Model)
 	if strings.Contains(got2.View(), "Saved") {
 		t.Fatal("status should clear on keystroke")
+	}
+}
+
+func TestCtrlSIgnoredInViewMode(t *testing.T) {
+	m := newTestModel()
+	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlS})
+	if cmd != nil {
+		t.Fatal("expected no command for ctrl+s in view mode")
 	}
 }
 

@@ -58,6 +58,9 @@ func (m Model) Init() tea.Cmd {
 func saveFile(path, content string) tea.Cmd {
 	return func() tea.Msg {
 		err := os.WriteFile(path, []byte(content), 0644)
+		if err != nil {
+			err = fmt.Errorf("save %s: %w", path, err)
+		}
 		return saveMsg{err: err}
 	}
 }
