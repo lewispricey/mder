@@ -418,6 +418,53 @@ func TestViewportInitialContent(t *testing.T) {
 	}
 }
 
+func TestLiveRenderOnTyping(t *testing.T) {
+	content := "# Hello\n\nWorld"
+	m := loadInEditMode(t, content)
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = m2.(model.Model)
+	vcBefore := m.ViewportContent()
+
+	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
+	got := m2.(model.Model)
+	got2 := processCmd(t, got, cmd)
+
+	if got2.ViewportContent() == vcBefore {
+		t.Fatal("expected viewport content to update after typing")
+	}
+}
+
+func TestLiveRenderOnBackspace(t *testing.T) {
+	content := "# Hello!"
+	m := loadInEditMode(t, content)
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = m2.(model.Model)
+	vcBefore := m.ViewportContent()
+
+	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	got := m2.(model.Model)
+	got2 := processCmd(t, got, cmd)
+
+	if got2.ViewportContent() == vcBefore {
+		t.Fatal("expected viewport content to update after backspace")
+	}
+}
+
+func TestNoRenderOnNavigation(t *testing.T) {
+	m := loadInEditMode(t, "hello\nworld")
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = m2.(model.Model)
+	vcBefore := m.ViewportContent()
+
+	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	got := m2.(model.Model)
+	got2 := processCmd(t, got, cmd)
+
+	if got2.ViewportContent() != vcBefore {
+		t.Fatal("expected viewport content unchanged on navigation key")
+	}
+}
+
 func TestEditModeQTypes(t *testing.T) {
 	m := loadInEditMode(t, "hel")
 	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
