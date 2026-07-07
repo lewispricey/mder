@@ -185,8 +185,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.mode == EditMode {
 			var cmd tea.Cmd
+			oldValue := m.textarea.Value()
 			m.textarea, cmd = m.textarea.Update(msg)
 			m.dirty = m.textarea.Value() != m.cleanContent
+			if oldValue != m.textarea.Value() {
+				return m, tea.Batch(cmd, renderMarkdown(m.textarea.Value(), m.viewport.Width))
+			}
 			return m, cmd
 		}
 		if keybinds.IsQuit(msg) {
