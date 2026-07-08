@@ -69,7 +69,9 @@ func TestFileReadSuccess(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "test.md")
 	want := "# Hello\n\nWorld"
-	os.WriteFile(f, []byte(want), 0644)
+	if err := os.WriteFile(f, []byte(want), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	m := model.New(model.ViewMode, f)
 	cmd := m.Init()
@@ -114,7 +116,9 @@ func loadInEditMode(t *testing.T, content string) model.Model {
 	t.Helper()
 	dir := t.TempDir()
 	f := filepath.Join(dir, "test.md")
-	os.WriteFile(f, []byte(content), 0644)
+	if err := os.WriteFile(f, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	m := model.New(model.EditMode, f)
 	cmd := m.Init()
@@ -178,7 +182,9 @@ func TestSaveSuccess(t *testing.T) {
 func TestSaveError(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "readonly.md")
-	os.WriteFile(f, []byte("hello"), 0444)
+	if err := os.WriteFile(f, []byte("hello"), 0444); err != nil {
+		t.Fatal(err)
+	}
 
 	m := model.New(model.EditMode, f)
 	cmd := m.Init()
@@ -401,6 +407,8 @@ func TestSplitLayoutHeightConstraint(t *testing.T) {
 
 func TestViewportContainsRenderedMarkdown(t *testing.T) {
 	m := loadInEditMode(t, "**bold** and *italic*")
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = m2.(model.Model)
 	vc := m.ViewportContent()
 	if vc == "" {
 		t.Fatal("expected non-empty viewport content after render")
@@ -408,13 +416,52 @@ func TestViewportContainsRenderedMarkdown(t *testing.T) {
 	if strings.Contains(vc, "**bold**") {
 		t.Fatal("expected rendered markdown, found raw **bold** in viewport")
 	}
+	if strings.Contains(vc, "*italic*") {
+		t.Fatal("expected rendered markdown, found raw *italic* in viewport")
+	}
+	if !strings.Contains(vc, "bold") {
+		t.Fatal("expected rendered text 'bold' in viewport content")
+	}
+}
+
+func TestViewportRendersHeadings(t *testing.T) {
+	m := loadInEditMode(t, "# H1\n\n## H2\n\n### H3")
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = m2.(model.Model)
+	vc := m.ViewportContent()
+	if vc == "" {
+		t.Fatal("expected non-empty viewport content after render")
+	}
+	if strings.Contains(vc, "# H1") {
+		t.Fatal("expected rendered markdown, found raw # H1 in viewport")
+	}
+	if strings.Contains(vc, "## H2") {
+		t.Fatal("expected rendered markdown, found raw ## H2 in viewport")
+	}
+	if strings.Contains(vc, "### H3") {
+		t.Fatal("expected rendered markdown, found raw ### H3 in viewport")
+	}
+	if !strings.Contains(vc, "H1") {
+		t.Fatal("expected rendered text 'H1' in viewport content")
+	}
+	if !strings.Contains(vc, "H2") {
+		t.Fatal("expected rendered text 'H2' in viewport content")
+	}
+	if !strings.Contains(vc, "H3") {
+		t.Fatal("expected rendered text 'H3' in viewport content")
+	}
 }
 
 func TestViewportInitialContent(t *testing.T) {
 	m := loadInEditMode(t, "# Hello")
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = m2.(model.Model)
 	vc := m.ViewportContent()
 	if vc == "" {
 		t.Fatal("expected non-empty viewport content after render")
+	}
+	if !strings.Contains(vc, "Hello") {
+		t.Fatalf("expected rendered heading text 'Hello' in viewport, got: %q", vc)
 	}
 }
 

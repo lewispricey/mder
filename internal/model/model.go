@@ -9,6 +9,8 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
+	"github.com/charmbracelet/glamour/ansi"
+	"github.com/charmbracelet/glamour/styles"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lewispricey/mded/internal/keybinds"
 )
@@ -47,6 +49,16 @@ type debouncedRenderMsg struct {
 }
 
 const debounceDelay = 75 * time.Millisecond
+
+func markdownStyle() ansi.StyleConfig {
+	cfg := styles.DarkStyleConfig
+	cfg.H2.Prefix = ""
+	cfg.H3.Prefix = ""
+	cfg.H4.Prefix = ""
+	cfg.H5.Prefix = ""
+	cfg.H6.Prefix = ""
+	return cfg
+}
 
 type Model struct {
 	mode          Mode
@@ -106,7 +118,7 @@ func saveFile(path, content string) tea.Cmd {
 func renderMarkdown(content string, width int) tea.Cmd {
 	return func() tea.Msg {
 		renderer, err := glamour.NewTermRenderer(
-			glamour.WithAutoStyle(),
+			glamour.WithStyles(markdownStyle()),
 			glamour.WithWordWrap(width),
 		)
 		if err != nil {
@@ -120,7 +132,7 @@ func renderMarkdown(content string, width int) tea.Cmd {
 func debouncedRender(content string, width int, version int) tea.Cmd {
 	return func() tea.Msg {
 		renderer, err := glamour.NewTermRenderer(
-			glamour.WithAutoStyle(),
+			glamour.WithStyles(markdownStyle()),
 			glamour.WithWordWrap(width),
 		)
 		if err != nil {

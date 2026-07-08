@@ -18,7 +18,9 @@ func runCommand(t *testing.T, args ...string) error {
 func TestViewMode(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "test.md")
-	os.WriteFile(f, []byte("# hi"), 0644)
+	if err := os.WriteFile(f, []byte("# hi"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	err := runCommand(t, f, "--view")
 	if err != nil {
@@ -29,7 +31,9 @@ func TestViewMode(t *testing.T) {
 func TestEditMode(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "test.md")
-	os.WriteFile(f, []byte("# hi"), 0644)
+	if err := os.WriteFile(f, []byte("# hi"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	err := runCommand(t, f, "--edit")
 	if err != nil {
@@ -40,7 +44,9 @@ func TestEditMode(t *testing.T) {
 func TestDefaultModeIsView(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "test.md")
-	os.WriteFile(f, []byte("# hi"), 0644)
+	if err := os.WriteFile(f, []byte("# hi"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	err := runCommand(t, f)
 	if err != nil {
@@ -58,7 +64,9 @@ func TestMissingFile(t *testing.T) {
 func TestConflictingFlags(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "test.md")
-	os.WriteFile(f, []byte("# hi"), 0644)
+	if err := os.WriteFile(f, []byte("# hi"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	err := runCommand(t, f, "--view", "--edit")
 	if err == nil {
