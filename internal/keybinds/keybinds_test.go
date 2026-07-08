@@ -55,3 +55,17 @@ func TestIsQuitNonQuit(t *testing.T) {
 		t.Fatal("expected 'a' not to be a quit key")
 	}
 }
+
+func TestIsToggleModeCtrlE(t *testing.T) {
+	msg := tea.KeyMsg{Type: tea.KeyCtrlE}
+	if !keybinds.IsToggleMode(msg) {
+		t.Fatal("expected ctrl+e to be a toggle key")
+	}
+}
+
+func TestIsToggleModeNonToggle(t *testing.T) {
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'e'}}
+	if keybinds.IsToggleMode(msg) {
+		t.Fatal("expected 'e' not to be a toggle key")
+	}
+}

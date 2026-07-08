@@ -143,6 +143,30 @@ func debouncedRender(content string, width int, version int) tea.Cmd {
 	}
 }
 
+func (m Model) initEditComponents() Model {
+	if m.textarea.Width() == 0 {
+		m.textarea = textarea.New()
+		leftWidth, rightWidth := m.PaneWidths()
+		if leftWidth > 0 {
+			m.textarea.SetWidth(leftWidth - 2)
+		}
+		if m.height >= 4 {
+			m.textarea.SetHeight(m.height - 3)
+		}
+		rw := rightWidth - 2
+		if rw < 1 {
+			rw = 80
+		}
+		vph := m.height - 3
+		if vph < 1 {
+			vph = 1
+		}
+		m.viewport = viewport.New(rw, vph)
+	}
+	m.textarea.SetValue(m.content)
+	return m
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case fileLoadedMsg:
@@ -152,28 +176,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.content = msg.content
 		if m.mode == EditMode {
-			m.textarea = textarea.New()
-			leftWidth, rightWidth := m.PaneWidths()
-			if leftWidth > 0 {
-				m.textarea.SetWidth(leftWidth - 2)
-			}
-			if m.height >= 4 {
-				m.textarea.SetHeight(m.height - 3)
-			}
-			m.textarea.SetValue(msg.content)
+			m = m.initEditComponents()
 			m.cleanContent = msg.content
-
-			rw := rightWidth - 2
-			if rw < 1 {
-				rw = 80
-			}
-			vph := m.height - 3
-			if vph < 1 {
-				vph = 1
-			}
-			m.viewport = viewport.New(rw, vph)
-
-			return m, tea.Batch(m.textarea.Focus(), renderMarkdown(msg.content, rw))
+			return m, tea.Batch(m.textarea.Focus(), renderMarkdown(m.content, m.viewport.Width))
 		}
 		return m, nil
 	case saveMsg:
@@ -237,6 +242,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.quitting = false
 		if keybinds.IsSave(msg) && m.mode == EditMode {
 			return m, saveFile(m.filePath, m.textarea.Value())
+		}
+		if keybinds.IsToggleMode(msg) && m.content != "" {
+			if m.mode == ViewMode {
+				isFirstEntry := m.textarea.Width() == 0
+				m.mode = EditMode
+				m = m.initEditComponents()
+				if isFirstEntry {
+					m.cleanContent = m.content
+				}
+				return m, tea.Batch(m.textarea.Focus(), renderMarkdown(m.content, m.viewport.Width))
+			}
+			m.content = m.textarea.Value()
+			m.mode = ViewMode
+			return m, nil
 		}
 		if m.mode == EditMode {
 			var cmd tea.Cmd
