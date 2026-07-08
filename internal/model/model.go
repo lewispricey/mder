@@ -3,6 +3,7 @@ package model
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -35,19 +36,32 @@ type renderMsg struct {
 	err     error
 }
 
+type triggerRender struct {
+	version int
+}
+
+type debouncedRenderMsg struct {
+	content string
+	err     error
+	version int
+}
+
+const debounceDelay = 75 * time.Millisecond
+
 type Model struct {
-	mode         Mode
-	filePath     string
-	content      string
-	readErr      error
-	status       string
-	textarea     textarea.Model
-	viewport     viewport.Model
-	width        int
-	height       int
-	dirty        bool
-	cleanContent string
-	quitting     bool
+	mode          Mode
+	filePath      string
+	content       string
+	readErr       error
+	status        string
+	textarea      textarea.Model
+	viewport      viewport.Model
+	width         int
+	height        int
+	dirty         bool
+	cleanContent  string
+	quitting      bool
+	renderVersion int
 }
 
 func (m Model) Width() int              { return m.width }
@@ -103,6 +117,20 @@ func renderMarkdown(content string, width int) tea.Cmd {
 	}
 }
 
+func debouncedRender(content string, width int, version int) tea.Cmd {
+	return func() tea.Msg {
+		renderer, err := glamour.NewTermRenderer(
+			glamour.WithAutoStyle(),
+			glamour.WithWordWrap(width),
+		)
+		if err != nil {
+			return debouncedRenderMsg{err: fmt.Errorf("render: %w", err), version: version}
+		}
+		rendered, err := renderer.Render(content)
+		return debouncedRenderMsg{content: rendered, err: err, version: version}
+	}
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case fileLoadedMsg:
@@ -152,6 +180,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.SetContent(msg.content)
 		}
 		return m, nil
+	case triggerRender:
+		if msg.version != m.renderVersion {
+			return m, nil
+		}
+		return m, debouncedRender(m.textarea.Value(), m.viewport.Width, msg.version)
+	case debouncedRenderMsg:
+		if msg.version != m.renderVersion {
+			return m, nil
+		}
+		if msg.err != nil {
+			m.status = fmt.Sprintf("Render error: %v", msg.err)
+		} else {
+			m.viewport.SetContent(msg.content)
+		}
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -189,7 +232,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.textarea, cmd = m.textarea.Update(msg)
 			m.dirty = m.textarea.Value() != m.cleanContent
 			if oldValue != m.textarea.Value() {
-				return m, tea.Batch(cmd, renderMarkdown(m.textarea.Value(), m.viewport.Width))
+				m.renderVersion++
+				return m, tea.Batch(
+					cmd,
+					tea.Tick(debounceDelay, func(time.Time) tea.Msg {
+						return triggerRender{version: m.renderVersion}
+					}),
+				)
 			}
 			return m, cmd
 		}

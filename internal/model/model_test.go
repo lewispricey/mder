@@ -465,6 +465,80 @@ func TestNoRenderOnNavigation(t *testing.T) {
 	}
 }
 
+func TestDebounceRapidKeystrokes(t *testing.T) {
+	m := loadInEditMode(t, "# Hello")
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = m2.(model.Model)
+	vcBefore := m.ViewportContent()
+
+	var batches []tea.Cmd
+	for _, ch := range []rune{'a', 'b', 'c', 'd', 'e'} {
+		m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{ch}})
+		m = m2.(model.Model)
+		if cmd != nil {
+			batches = append(batches, cmd)
+		}
+	}
+
+	for _, batch := range batches {
+		m = processCmd(t, m, batch)
+	}
+
+	if m.ViewportContent() == vcBefore {
+		t.Fatal("expected viewport content to update after debounced render")
+	}
+}
+
+func TestStaleRenderDiscarded(t *testing.T) {
+	m := loadInEditMode(t, "# Hello")
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = m2.(model.Model)
+
+	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'a'}})
+	m = m2.(model.Model)
+
+	msg := cmd().(tea.BatchMsg)
+	tickCmd := msg[1]
+	tickMsg := tickCmd()
+	m2, renderCmd := m.Update(tickMsg)
+	m = m2.(model.Model)
+
+	vcBefore := m.ViewportContent()
+
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}})
+	m = m2.(model.Model)
+
+	m = processCmd(t, m, renderCmd)
+
+	if m.ViewportContent() != vcBefore {
+		t.Fatal("expected stale render to be discarded, viewport changed unexpectedly")
+	}
+
+	m2, cmd = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	m = m2.(model.Model)
+	m = processCmd(t, m, cmd)
+
+	if m.ViewportContent() == vcBefore {
+		t.Fatal("expected viewport content to update after latest render")
+	}
+}
+
+func TestSingleKeystrokeDebounced(t *testing.T) {
+	m := loadInEditMode(t, "# Hello")
+	m2, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = m2.(model.Model)
+	vcBefore := m.ViewportContent()
+
+	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	m = m2.(model.Model)
+
+	m = processCmd(t, m, cmd)
+
+	if m.ViewportContent() == vcBefore {
+		t.Fatal("expected viewport content to update after single keystroke debounced render")
+	}
+}
+
 func TestEditModeQTypes(t *testing.T) {
 	m := loadInEditMode(t, "hel")
 	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}})
