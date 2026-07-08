@@ -10,6 +10,10 @@ func IsSave(msg tea.KeyMsg) bool {
 	return msg.String() == "ctrl+s"
 }
 
+func IsToggleMode(msg tea.KeyMsg) bool {
+	return msg.String() == "ctrl+e"
+}
+
 func IsQuit(msg tea.KeyMsg) bool {
 	return msg.String() == "q" || IsHardQuit(msg)
 }

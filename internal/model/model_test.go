@@ -127,6 +127,21 @@ func loadInEditMode(t *testing.T, content string) model.Model {
 	return processCmd(t, m2.(model.Model), cmd2)
 }
 
+func loadInViewMode(t *testing.T, content string) model.Model {
+	t.Helper()
+	dir := t.TempDir()
+	f := filepath.Join(dir, "test.md")
+	if err := os.WriteFile(f, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	m := model.New(model.ViewMode, f)
+	cmd := m.Init()
+	msg := cmd()
+	m2, _ := m.Update(msg)
+	return m2.(model.Model)
+}
+
 func TestEditModeTextareaInit(t *testing.T) {
 	m := loadInEditMode(t, "hello")
 	if !strings.Contains(m.View(), "hello") {
@@ -583,6 +598,96 @@ func TestSingleKeystrokeDebounced(t *testing.T) {
 
 	if m.ViewportContent() == vcBefore {
 		t.Fatal("expected viewport content to update after single keystroke debounced render")
+	}
+}
+
+func TestToggleViewToEditFirst(t *testing.T) {
+	m := loadInViewMode(t, "# Hello")
+	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	got := m2.(model.Model)
+	got2 := processCmd(t, got, cmd)
+
+	if !strings.Contains(got2.TextareaValue(), "# Hello") {
+		t.Fatalf("expected textarea to have content after toggle, got %q", got2.TextareaValue())
+	}
+	vc := got2.ViewportContent()
+	if vc == "" {
+		t.Fatal("expected non-empty viewport content after toggle to edit")
+	}
+	if strings.Contains(vc, "# Hello") {
+		t.Fatal("expected rendered markdown, found raw # Hello in viewport after toggle")
+	}
+}
+
+func TestToggleEditToView(t *testing.T) {
+	m := loadInEditMode(t, "hello")
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
+	m = m2.(model.Model)
+
+	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	got := m2.(model.Model)
+	if cmd != nil {
+		t.Fatal("expected no command when toggling edit to view")
+	}
+	if !strings.Contains(got.View(), "hello!") {
+		t.Fatalf("expected view mode to show edited content, got %q", got.View())
+	}
+}
+
+func TestToggleRoundtripPreservesContent(t *testing.T) {
+	m := loadInViewMode(t, "hello")
+	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	m = m2.(model.Model)
+	m = processCmd(t, m, cmd)
+
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'x'}})
+	m = m2.(model.Model)
+
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	m = m2.(model.Model)
+
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	got := m2.(model.Model)
+
+	if !strings.Contains(got.TextareaValue(), "hellox") {
+		t.Fatalf("expected textarea to preserve content after roundtrip, got %q", got.TextareaValue())
+	}
+}
+
+func TestTogglePreservesDirty(t *testing.T) {
+	m := loadInEditMode(t, "hello")
+	m2, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'!'}})
+	m = m2.(model.Model)
+
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	m = m2.(model.Model)
+
+	m2, _ = m.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	m = m2.(model.Model)
+
+	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
+	got := m2.(model.Model)
+	if cmd != nil {
+		t.Fatal("expected first ctrl+c to be blocked after toggle (dirty should be preserved)")
+	}
+	if !strings.Contains(got.View(), "Unsaved changes") {
+		t.Fatal("expected unsaved changes prompt after toggle preserves dirty")
+	}
+}
+
+func TestToggleTwiceBackToView(t *testing.T) {
+	m := loadInViewMode(t, "# Hello")
+	m2, cmd := m.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	m = m2.(model.Model)
+	m = processCmd(t, m, cmd)
+
+	m2, cmd = m.Update(tea.KeyMsg{Type: tea.KeyCtrlE})
+	got := m2.(model.Model)
+	if cmd != nil {
+		t.Fatal("expected no command when toggling back to view")
+	}
+	if strings.Contains(got.View(), "╭") {
+		t.Fatal("expected view mode after second toggle, got split pane layout")
 	}
 }
 

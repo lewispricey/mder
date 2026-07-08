@@ -17,6 +17,7 @@ Flags:
 | Key | Action |
 |---|---|
 | `Ctrl+S` | Save (edit mode) |
+| `Ctrl+E` | Toggle between view and edit mode |
 | `q` | Quit (view mode) |
 | `Ctrl+C` | Quit (press twice when unsaved changes exist) |
 
