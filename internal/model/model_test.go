@@ -69,7 +69,9 @@ func TestFileReadSuccess(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "test.md")
 	want := "# Hello\n\nWorld"
-	os.WriteFile(f, []byte(want), 0644)
+	if err := os.WriteFile(f, []byte(want), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	m := model.New(model.ViewMode, f)
 	cmd := m.Init()
@@ -114,7 +116,9 @@ func loadInEditMode(t *testing.T, content string) model.Model {
 	t.Helper()
 	dir := t.TempDir()
 	f := filepath.Join(dir, "test.md")
-	os.WriteFile(f, []byte(content), 0644)
+	if err := os.WriteFile(f, []byte(content), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	m := model.New(model.EditMode, f)
 	cmd := m.Init()
@@ -178,7 +182,9 @@ func TestSaveSuccess(t *testing.T) {
 func TestSaveError(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "readonly.md")
-	os.WriteFile(f, []byte("hello"), 0444)
+	if err := os.WriteFile(f, []byte("hello"), 0444); err != nil {
+		t.Fatal(err)
+	}
 
 	m := model.New(model.EditMode, f)
 	cmd := m.Init()
